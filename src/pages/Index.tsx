@@ -129,9 +129,7 @@ const Index = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
               <Icon name="Sparkles" className="text-white" size={20} />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              BraceletShop
-            </h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">ДОМБРАСЛЕТОВ</h1>
           </div>
           
           <Sheet>
