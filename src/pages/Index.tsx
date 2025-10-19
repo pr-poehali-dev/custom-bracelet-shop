@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Product {
   id: number;
@@ -34,13 +35,23 @@ interface CartItem {
   quantity: number;
 }
 
+interface Order {
+  id: number;
+  customerName: string;
+  items: CartItem[];
+  total: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  date: string;
+}
+
 const Index = () => {
   const { toast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [newReview, setNewReview] = useState({ rating: 5, text: '' });
-
-  const products: Product[] = [
+  const [logoClicks, setLogoClicks] = useState(0);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [products, setProducts] = useState<Product[]>([
     {
       id: 1,
       name: 'Градиент Мечты',
@@ -75,7 +86,45 @@ const Index = () => {
         { id: 4, author: 'Ольга В.', rating: 4, text: 'Красивый, но хотелось бы чуть длиннее', date: '08.10.2024' }
       ]
     }
-  ];
+  ]);
+  const [orders, setOrders] = useState<Order[]>([
+    {
+      id: 1,
+      customerName: 'Иван Петров',
+      items: [{ product: products[0], quantity: 2 }],
+      total: 2580,
+      status: 'pending',
+      date: '19.10.2024'
+    },
+    {
+      id: 2,
+      customerName: 'Мария Сидорова',
+      items: [{ product: products[1], quantity: 1 }],
+      total: 1490,
+      status: 'pending',
+      date: '18.10.2024'
+    }
+  ]);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    price: 0,
+    image: '',
+    category: '',
+    description: ''
+  });
+
+  const handleLogoClick = () => {
+    const newCount = logoClicks + 1;
+    setLogoClicks(newCount);
+    
+    if (newCount === 7) {
+      setIsAdminMode(true);
+      toast({
+        title: "Режим администратора активирован",
+        description: "Добро пожаловать в админ-панель",
+      });
+    }
+  };
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.product.id === product.id);
@@ -121,23 +170,248 @@ const Index = () => {
     setNewReview({ rating: 5, text: '' });
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-pink-100">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-purple-200 shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <Icon name="Sparkles" className="text-white" size={20} />
+  const deleteProduct = (productId: number) => {
+    setProducts(products.filter(p => p.id !== productId));
+    toast({
+      title: "Товар удален",
+      description: "Товар успешно удален из каталога",
+    });
+  };
+
+  const addProduct = () => {
+    if (!newProduct.name || !newProduct.price || !newProduct.image) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все обязательные поля",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const product: Product = {
+      id: Math.max(...products.map(p => p.id), 0) + 1,
+      name: newProduct.name,
+      price: newProduct.price,
+      image: newProduct.image,
+      category: newProduct.category || 'Новинка',
+      description: newProduct.description,
+      reviews: []
+    };
+
+    setProducts([...products, product]);
+    setNewProduct({ name: '', price: 0, image: '', category: '', description: '' });
+    toast({
+      title: "Товар добавлен",
+      description: "Новый товар успешно добавлен в каталог",
+    });
+  };
+
+  const updateOrderStatus = (orderId: number, status: 'accepted' | 'rejected') => {
+    setOrders(orders.map(order =>
+      order.id === orderId ? { ...order, status } : order
+    ));
+    toast({
+      title: status === 'accepted' ? "Заказ принят" : "Заказ отклонен",
+      description: `Заказ #${orderId} ${status === 'accepted' ? 'принят в работу' : 'отклонен'}`,
+    });
+  };
+
+  if (isAdminMode) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Icon name="ShieldCheck" size={24} />
+              <h1 className="text-2xl font-bold">Админ-панель</h1>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">ДОМБРАСЛЕТОВ</h1>
+            <Button variant="outline" onClick={() => { setIsAdminMode(false); setLogoClicks(0); }}>
+              <Icon name="LogOut" size={18} className="mr-2" />
+              Выйти
+            </Button>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-8">
+          <Tabs defaultValue="orders" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8">
+              <TabsTrigger value="orders">Заказы ({orders.filter(o => o.status === 'pending').length})</TabsTrigger>
+              <TabsTrigger value="products">Товары ({products.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="orders" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Список заказов</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Клиент</TableHead>
+                        <TableHead>Товары</TableHead>
+                        <TableHead>Сумма</TableHead>
+                        <TableHead>Дата</TableHead>
+                        <TableHead>Статус</TableHead>
+                        <TableHead>Действия</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.map(order => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-medium">#{order.id}</TableCell>
+                          <TableCell>{order.customerName}</TableCell>
+                          <TableCell>
+                            {order.items.map(item => (
+                              <div key={item.product.id} className="text-sm">
+                                {item.product.name} x{item.quantity}
+                              </div>
+                            ))}
+                          </TableCell>
+                          <TableCell className="font-semibold">{order.total} ₽</TableCell>
+                          <TableCell>{order.date}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              order.status === 'accepted' ? 'default' :
+                              order.status === 'rejected' ? 'destructive' : 'secondary'
+                            }>
+                              {order.status === 'pending' ? 'Ожидает' : 
+                               order.status === 'accepted' ? 'Принят' : 'Отклонен'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {order.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'accepted')}>
+                                  <Icon name="Check" size={14} />
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => updateOrderStatus(order.id, 'rejected')}>
+                                  <Icon name="X" size={14} />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="products" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Добавить новый товар</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Название</Label>
+                      <Input
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                        placeholder="Название браслета"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Цена (₽)</Label>
+                      <Input
+                        type="number"
+                        value={newProduct.price || ''}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
+                        placeholder="1000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>URL изображения</Label>
+                      <Input
+                        value={newProduct.image}
+                        onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Категория</Label>
+                      <Input
+                        value={newProduct.category}
+                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                        placeholder="Новинка"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Описание</Label>
+                      <Textarea
+                        value={newProduct.description}
+                        onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                        placeholder="Описание товара..."
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                  <Button className="mt-4" onClick={addProduct}>
+                    <Icon name="Plus" size={18} className="mr-2" />
+                    Добавить товар
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Список товаров</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products.map(product => (
+                      <Card key={product.id} className="overflow-hidden">
+                        <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
+                        <CardContent className="p-4">
+                          <h4 className="font-semibold mb-1">{product.name}</h4>
+                          <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
+                          <p className="font-bold mb-3">{product.price} ₽</p>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => deleteProduct(product.id)}
+                          >
+                            <Icon name="Trash2" size={14} className="mr-2" />
+                            Удалить
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      <header className="sticky top-0 z-50 bg-white border-b">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div 
+            className="flex items-center gap-3 cursor-pointer select-none" 
+            onClick={handleLogoClick}
+          >
+            <div className="w-10 h-10 bg-black rounded-sm flex items-center justify-center">
+              <Icon name="Gem" className="text-white" size={20} />
+            </div>
+            <h1 className="text-2xl font-bold">Дом Браслетов</h1>
           </div>
           
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="lg" className="relative border-2 border-purple-300 hover:border-purple-400">
+              <Button variant="outline" size="lg" className="relative">
                 <Icon name="ShoppingCart" size={20} />
                 {cartItemsCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 border-0">
+                  <Badge className="absolute -top-2 -right-2 bg-black">
                     {cartItemsCount}
                   </Badge>
                 )}
@@ -162,7 +436,7 @@ const Index = () => {
                             <img
                               src={item.product.image}
                               alt={item.product.name}
-                              className="w-20 h-20 object-cover rounded-lg"
+                              className="w-20 h-20 object-cover rounded"
                             />
                             <div className="flex-1">
                               <h4 className="font-semibold">{item.product.name}</h4>
@@ -199,11 +473,9 @@ const Index = () => {
                     <div className="border-t pt-4 mt-4">
                       <div className="flex justify-between items-center text-lg font-bold mb-4">
                         <span>Итого:</span>
-                        <span className="text-2xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                          {totalPrice} ₽
-                        </span>
+                        <span className="text-2xl">{totalPrice} ₽</span>
                       </div>
-                      <Button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white" size="lg">
+                      <Button className="w-full bg-black hover:bg-gray-800 text-white" size="lg">
                         <Icon name="CreditCard" size={20} className="mr-2" />
                         Оформить заказ
                       </Button>
@@ -217,56 +489,53 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto px-4 py-12">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
-            Создай браслет мечты
+        <div className="text-center mb-16 animate-fade-in">
+          <h2 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight">
+            Уникальные браслеты<br />ручной работы
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Уникальные браслеты ручной работы с возможностью полной кастомизации под ваш стиль
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            Каждое изделие создается с вниманием к деталям и может быть адаптировано под ваши предпочтения
           </p>
-          <Button size="lg" className="mt-6 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white shadow-lg">
+          <Button size="lg" className="bg-accent hover:bg-accent/90 text-white">
             <Icon name="Palette" size={20} className="mr-2" />
-            Создать свой дизайн
+            Заказать индивидуальный дизайн
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           {products.map((product, index) => (
             <Dialog key={product.id} onOpenChange={(open) => open && setSelectedProduct(product)}>
               <Card 
-                className="group overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] animate-fade-in border-2 border-purple-100"
+                className="group overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg animate-fade-in"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <DialogTrigger asChild>
                   <div>
-                    <div className="relative overflow-hidden aspect-square">
-                      <Badge className="absolute top-3 right-3 z-10 bg-gradient-to-r from-purple-500 to-pink-500 border-0">
+                    <div className="relative overflow-hidden aspect-square bg-gray-50">
+                      <Badge className="absolute top-4 right-4 z-10 bg-black">
                         {product.category}
                       </Badge>
                       <img
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                     <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-2">{product.name}</h3>
+                      <h3 className="text-xl font-semibold mb-2">{product.name}</h3>
                       <div className="flex items-center gap-1 mb-3">
                         {[...Array(5)].map((_, i) => (
-                          <Icon key={i} name="Star" size={16} className="fill-orange-400 text-orange-400" />
+                          <Icon key={i} name="Star" size={14} className="fill-accent text-accent" />
                         ))}
                         <span className="text-sm text-muted-foreground ml-2">({product.reviews.length})</span>
                       </div>
-                      <p className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-                        {product.price} ₽
-                      </p>
+                      <p className="text-2xl font-bold mb-4">{product.price} ₽</p>
                     </CardContent>
                   </div>
                 </DialogTrigger>
-                <CardContent className="p-6 pt-0">
+                <CardContent className="px-6 pb-6">
                   <Button
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                    className="w-full bg-black hover:bg-gray-800 text-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       addToCart(product);
@@ -295,20 +564,16 @@ const Index = () => {
                       <img
                         src={selectedProduct.image}
                         alt={selectedProduct.name}
-                        className="w-full rounded-lg shadow-lg"
+                        className="w-full rounded"
                       />
                       <div className="space-y-3">
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 border-0">
-                          {selectedProduct.category}
-                        </Badge>
-                        <p className="text-lg">{selectedProduct.description}</p>
-                        <div className="flex items-center justify-between py-4 border-t border-b">
-                          <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                            {selectedProduct.price} ₽
-                          </span>
+                        <Badge className="bg-black">{selectedProduct.category}</Badge>
+                        <p className="text-lg leading-relaxed">{selectedProduct.description}</p>
+                        <div className="flex items-center justify-between py-6 border-t border-b">
+                          <span className="text-3xl font-bold">{selectedProduct.price} ₽</span>
                           <Button
                             size="lg"
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                            className="bg-black hover:bg-gray-800 text-white"
                             onClick={() => addToCart(selectedProduct)}
                           >
                             <Icon name="ShoppingCart" size={20} className="mr-2" />
@@ -332,20 +597,20 @@ const Index = () => {
                                         key={i}
                                         name="Star"
                                         size={14}
-                                        className={i < review.rating ? "fill-orange-400 text-orange-400" : "text-gray-300"}
+                                        className={i < review.rating ? "fill-accent text-accent" : "text-gray-300"}
                                       />
                                     ))}
                                   </div>
                                 </div>
                                 <span className="text-sm text-muted-foreground">{review.date}</span>
                               </div>
-                              <p className="text-sm">{review.text}</p>
+                              <p className="text-sm leading-relaxed">{review.text}</p>
                             </CardContent>
                           </Card>
                         ))}
                       </div>
                       
-                      <Card className="bg-purple-50 border-purple-200">
+                      <Card>
                         <CardContent className="p-6 space-y-4">
                           <h4 className="font-bold text-lg">Оставить отзыв</h4>
                           <div className="space-y-2">
@@ -360,7 +625,7 @@ const Index = () => {
                                   <Icon
                                     name="Star"
                                     size={24}
-                                    className={rating <= newReview.rating ? "fill-orange-400 text-orange-400" : "text-gray-300"}
+                                    className={rating <= newReview.rating ? "fill-accent text-accent" : "text-gray-300"}
                                   />
                                 </button>
                               ))}
@@ -377,7 +642,7 @@ const Index = () => {
                           </div>
                           <Button
                             onClick={submitReview}
-                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                            className="w-full bg-black hover:bg-gray-800 text-white"
                           >
                             Отправить отзыв
                           </Button>
@@ -386,7 +651,7 @@ const Index = () => {
                     </TabsContent>
 
                     <TabsContent value="contact" className="space-y-4">
-                      <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                      <Card>
                         <CardContent className="p-6 space-y-4">
                           <h4 className="font-bold text-lg">Связаться с продавцом</h4>
                           <div className="space-y-3">
@@ -405,7 +670,7 @@ const Index = () => {
                                 rows={4}
                               />
                             </div>
-                            <Button className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+                            <Button className="w-full bg-black hover:bg-gray-800 text-white">
                               <Icon name="Send" size={18} className="mr-2" />
                               Отправить сообщение
                             </Button>
@@ -415,15 +680,15 @@ const Index = () => {
                             <h5 className="font-semibold mb-3">Или напишите напрямую:</h5>
                             <Button variant="outline" className="w-full justify-start" size="lg">
                               <Icon name="MessageCircle" size={20} className="mr-2" />
-                              Telegram: @braceletshop
+                              Telegram: @dombraсletov
                             </Button>
                             <Button variant="outline" className="w-full justify-start" size="lg">
                               <Icon name="Instagram" size={20} className="mr-2" />
-                              Instagram: @braceletshop
+                              Instagram: @dombraсletov
                             </Button>
                             <Button variant="outline" className="w-full justify-start" size="lg">
                               <Icon name="Mail" size={20} className="mr-2" />
-                              Email: shop@bracelet.ru
+                              Email: info@dombraсletov.ru
                             </Button>
                           </div>
                         </CardContent>
@@ -436,19 +701,47 @@ const Index = () => {
           ))}
         </div>
 
-        <section className="mt-20 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 rounded-3xl p-12 text-white text-center">
-          <h3 className="text-4xl font-bold mb-4">Не нашли подходящий дизайн?</h3>
-          <p className="text-xl mb-8 opacity-90">Создайте уникальный браслет по своим параметрам</p>
-          <Button size="lg" variant="secondary" className="bg-white text-purple-600 hover:bg-gray-100">
+        <section className="bg-black text-white rounded p-12 md:p-16 text-center">
+          <h3 className="text-3xl md:text-4xl font-bold mb-4">Индивидуальный заказ</h3>
+          <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
+            Создайте уникальный браслет по вашим параметрам. Выбор материалов, цветов и элементов декора.
+          </p>
+          <Button size="lg" variant="secondary" className="bg-white text-black hover:bg-gray-100">
             <Icon name="Wand2" size={20} className="mr-2" />
-            Заказать кастомный браслет
+            Начать индивидуальный заказ
           </Button>
         </section>
       </main>
 
-      <footer className="bg-white/80 backdrop-blur-lg border-t border-purple-200 mt-20">
-        <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-          <p>© 2024 BraceletShop. Все права защищены.</p>
+      <footer className="bg-gray-50 border-t mt-20">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div>
+              <h4 className="font-bold mb-4">О нас</h4>
+              <p className="text-sm text-muted-foreground">
+                Создаем уникальные браслеты ручной работы с 2020 года. Каждое изделие - произведение искусства.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Контакты</h4>
+              <p className="text-sm text-muted-foreground">Email: info@dombraсletov.ru</p>
+              <p className="text-sm text-muted-foreground">Телефон: +7 (999) 123-45-67</p>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Социальные сети</h4>
+              <div className="flex gap-3">
+                <Button variant="outline" size="icon">
+                  <Icon name="Instagram" size={18} />
+                </Button>
+                <Button variant="outline" size="icon">
+                  <Icon name="MessageCircle" size={18} />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="text-center text-sm text-muted-foreground border-t pt-8">
+            © 2024 Дом Браслетов. Все права защищены.
+          </div>
         </div>
       </footer>
     </div>
