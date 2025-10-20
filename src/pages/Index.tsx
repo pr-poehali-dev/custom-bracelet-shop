@@ -1,48 +1,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  category: string;
-  description: string;
-  reviews: Review[];
-}
-
-interface Review {
-  id: number;
-  author: string;
-  rating: number;
-  text: string;
-  date: string;
-}
-
-interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-interface Order {
-  id: number;
-  customerName: string;
-  items: CartItem[];
-  total: number;
-  status: 'pending' | 'accepted' | 'rejected';
-  date: string;
-}
+import { Product, CartItem, Order } from '@/types';
+import AdminPanel from '@/components/AdminPanel';
+import ProductCard from '@/components/ProductCard';
+import ShoppingCart from '@/components/ShoppingCart';
+import ProductDialog from '@/components/ProductDialog';
 
 const Index = () => {
   const { toast } = useToast();
@@ -218,177 +185,16 @@ const Index = () => {
 
   if (isAdminMode) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b sticky top-0 z-50">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Icon name="ShieldCheck" size={24} />
-              <h1 className="text-2xl font-bold">Админ-панель</h1>
-            </div>
-            <Button variant="outline" onClick={() => { setIsAdminMode(false); setLogoClicks(0); }}>
-              <Icon name="LogOut" size={18} className="mr-2" />
-              Выйти
-            </Button>
-          </div>
-        </header>
-
-        <main className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="orders" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="orders">Заказы ({orders.filter(o => o.status === 'pending').length})</TabsTrigger>
-              <TabsTrigger value="products">Товары ({products.length})</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="orders" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Список заказов</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Клиент</TableHead>
-                        <TableHead>Товары</TableHead>
-                        <TableHead>Сумма</TableHead>
-                        <TableHead>Дата</TableHead>
-                        <TableHead>Статус</TableHead>
-                        <TableHead>Действия</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orders.map(order => (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-medium">#{order.id}</TableCell>
-                          <TableCell>{order.customerName}</TableCell>
-                          <TableCell>
-                            {order.items.map(item => (
-                              <div key={item.product.id} className="text-sm">
-                                {item.product.name} x{item.quantity}
-                              </div>
-                            ))}
-                          </TableCell>
-                          <TableCell className="font-semibold">{order.total} ₽</TableCell>
-                          <TableCell>{order.date}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              order.status === 'accepted' ? 'default' :
-                              order.status === 'rejected' ? 'destructive' : 'secondary'
-                            }>
-                              {order.status === 'pending' ? 'Ожидает' : 
-                               order.status === 'accepted' ? 'Принят' : 'Отклонен'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {order.status === 'pending' && (
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'accepted')}>
-                                  <Icon name="Check" size={14} />
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => updateOrderStatus(order.id, 'rejected')}>
-                                  <Icon name="X" size={14} />
-                                </Button>
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="products" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Добавить новый товар</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Название</Label>
-                      <Input
-                        value={newProduct.name}
-                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                        placeholder="Название браслета"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Цена (₽)</Label>
-                      <Input
-                        type="number"
-                        value={newProduct.price || ''}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: Number(e.target.value) })}
-                        placeholder="1000"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>URL изображения</Label>
-                      <Input
-                        value={newProduct.image}
-                        onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-                        placeholder="https://..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Категория</Label>
-                      <Input
-                        value={newProduct.category}
-                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                        placeholder="Новинка"
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label>Описание</Label>
-                      <Textarea
-                        value={newProduct.description}
-                        onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                        placeholder="Описание товара..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                  <Button className="mt-4" onClick={addProduct}>
-                    <Icon name="Plus" size={18} className="mr-2" />
-                    Добавить товар
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Список товаров</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {products.map(product => (
-                      <Card key={product.id} className="overflow-hidden">
-                        <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
-                        <CardContent className="p-4">
-                          <h4 className="font-semibold mb-1">{product.name}</h4>
-                          <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
-                          <p className="font-bold mb-3">{product.price} ₽</p>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => deleteProduct(product.id)}
-                          >
-                            <Icon name="Trash2" size={14} className="mr-2" />
-                            Удалить
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
+      <AdminPanel
+        products={products}
+        orders={orders}
+        newProduct={newProduct}
+        setNewProduct={setNewProduct}
+        deleteProduct={deleteProduct}
+        addProduct={addProduct}
+        updateOrderStatus={updateOrderStatus}
+        onExit={() => { setIsAdminMode(false); setLogoClicks(0); }}
+      />
     );
   }
 
@@ -422,66 +228,12 @@ const Index = () => {
                 <SheetTitle className="text-2xl">Корзина</SheetTitle>
               </SheetHeader>
               <div className="mt-8 space-y-4">
-                {cart.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Icon name="ShoppingBag" size={48} className="mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Корзина пуста</p>
-                  </div>
-                ) : (
-                  <>
-                    {cart.map(item => (
-                      <Card key={item.product.id} className="overflow-hidden">
-                        <CardContent className="p-4">
-                          <div className="flex gap-4">
-                            <img
-                              src={item.product.image}
-                              alt={item.product.name}
-                              className="w-20 h-20 object-cover rounded"
-                            />
-                            <div className="flex-1">
-                              <h4 className="font-semibold">{item.product.name}</h4>
-                              <p className="text-sm text-muted-foreground">{item.product.price} ₽</p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                >
-                                  <Icon name="Minus" size={14} />
-                                </Button>
-                                <span className="w-8 text-center">{item.quantity}</span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                >
-                                  <Icon name="Plus" size={14} />
-                                </Button>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeFromCart(item.product.id)}
-                            >
-                              <Icon name="Trash2" size={16} />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    <div className="border-t pt-4 mt-4">
-                      <div className="flex justify-between items-center text-lg font-bold mb-4">
-                        <span>Итого:</span>
-                        <span className="text-2xl">{totalPrice} ₽</span>
-                      </div>
-                      <Button className="w-full bg-black hover:bg-gray-800 text-white" size="lg">
-                        <Icon name="CreditCard" size={20} className="mr-2" />
-                        Оформить заказ
-                      </Button>
-                    </div>
-                  </>
-                )}
+                <ShoppingCart
+                  cart={cart}
+                  totalPrice={totalPrice}
+                  updateQuantity={updateQuantity}
+                  removeFromCart={removeFromCart}
+                />
               </div>
             </SheetContent>
           </Sheet>
@@ -505,198 +257,25 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           {products.map((product, index) => (
             <Dialog key={product.id} onOpenChange={(open) => open && setSelectedProduct(product)}>
-              <Card 
-                className="group overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg animate-fade-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <DialogTrigger asChild>
-                  <div>
-                    <div className="relative overflow-hidden aspect-square bg-gray-50">
-                      <Badge className="absolute top-4 right-4 z-10 bg-black">
-                        {product.category}
-                      </Badge>
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </div>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-semibold mb-2">{product.name}</h3>
-                      <div className="flex items-center gap-1 mb-3">
-                        {[...Array(5)].map((_, i) => (
-                          <Icon key={i} name="Star" size={14} className="fill-accent text-accent" />
-                        ))}
-                        <span className="text-sm text-muted-foreground ml-2">({product.reviews.length})</span>
-                      </div>
-                      <p className="text-2xl font-bold mb-4">{product.price} ₽</p>
-                    </CardContent>
-                  </div>
-                </DialogTrigger>
-                <CardContent className="px-6 pb-6">
-                  <Button
-                    className="w-full bg-black hover:bg-gray-800 text-white"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addToCart(product);
-                    }}
-                  >
-                    <Icon name="ShoppingCart" size={18} className="mr-2" />
-                    В корзину
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl">{selectedProduct?.name}</DialogTitle>
-                </DialogHeader>
-                
-                {selectedProduct && (
-                  <Tabs defaultValue="details" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="details">Описание</TabsTrigger>
-                      <TabsTrigger value="reviews">Отзывы ({selectedProduct.reviews.length})</TabsTrigger>
-                      <TabsTrigger value="contact">Связаться</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="details" className="space-y-4">
-                      <img
-                        src={selectedProduct.image}
-                        alt={selectedProduct.name}
-                        className="w-full rounded"
-                      />
-                      <div className="space-y-3">
-                        <Badge className="bg-black">{selectedProduct.category}</Badge>
-                        <p className="text-lg leading-relaxed">{selectedProduct.description}</p>
-                        <div className="flex items-center justify-between py-6 border-t border-b">
-                          <span className="text-3xl font-bold">{selectedProduct.price} ₽</span>
-                          <Button
-                            size="lg"
-                            className="bg-black hover:bg-gray-800 text-white"
-                            onClick={() => addToCart(selectedProduct)}
-                          >
-                            <Icon name="ShoppingCart" size={20} className="mr-2" />
-                            Добавить в корзину
-                          </Button>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="reviews" className="space-y-4">
-                      <div className="space-y-4">
-                        {selectedProduct.reviews.map(review => (
-                          <Card key={review.id}>
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <div>
-                                  <p className="font-semibold">{review.author}</p>
-                                  <div className="flex items-center gap-1 mt-1">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Icon
-                                        key={i}
-                                        name="Star"
-                                        size={14}
-                                        className={i < review.rating ? "fill-accent text-accent" : "text-gray-300"}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                                <span className="text-sm text-muted-foreground">{review.date}</span>
-                              </div>
-                              <p className="text-sm leading-relaxed">{review.text}</p>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                      
-                      <Card>
-                        <CardContent className="p-6 space-y-4">
-                          <h4 className="font-bold text-lg">Оставить отзыв</h4>
-                          <div className="space-y-2">
-                            <Label>Оценка</Label>
-                            <div className="flex gap-2">
-                              {[1, 2, 3, 4, 5].map((rating) => (
-                                <button
-                                  key={rating}
-                                  onClick={() => setNewReview({ ...newReview, rating })}
-                                  className="transition-transform hover:scale-110"
-                                >
-                                  <Icon
-                                    name="Star"
-                                    size={24}
-                                    className={rating <= newReview.rating ? "fill-accent text-accent" : "text-gray-300"}
-                                  />
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Ваш отзыв</Label>
-                            <Textarea
-                              placeholder="Поделитесь впечатлениями о товаре..."
-                              value={newReview.text}
-                              onChange={(e) => setNewReview({ ...newReview, text: e.target.value })}
-                              rows={4}
-                            />
-                          </div>
-                          <Button
-                            onClick={submitReview}
-                            className="w-full bg-black hover:bg-gray-800 text-white"
-                          >
-                            Отправить отзыв
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="contact" className="space-y-4">
-                      <Card>
-                        <CardContent className="p-6 space-y-4">
-                          <h4 className="font-bold text-lg">Связаться с продавцом</h4>
-                          <div className="space-y-3">
-                            <div className="space-y-2">
-                              <Label>Ваше имя</Label>
-                              <Input placeholder="Введите имя" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Email или телефон</Label>
-                              <Input placeholder="Введите контакт" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Сообщение</Label>
-                              <Textarea
-                                placeholder="Опишите ваши пожелания по кастомизации..."
-                                rows={4}
-                              />
-                            </div>
-                            <Button className="w-full bg-black hover:bg-gray-800 text-white">
-                              <Icon name="Send" size={18} className="mr-2" />
-                              Отправить сообщение
-                            </Button>
-                          </div>
-                          
-                          <div className="pt-4 border-t space-y-2">
-                            <h5 className="font-semibold mb-3">Или напишите напрямую:</h5>
-                            <Button variant="outline" className="w-full justify-start" size="lg">
-                              <Icon name="MessageCircle" size={20} className="mr-2" />
-                              Telegram: @dombraсletov
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start" size="lg">
-                              <Icon name="Instagram" size={20} className="mr-2" />
-                              Instagram: @dombraсletov
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start" size="lg">
-                              <Icon name="Mail" size={20} className="mr-2" />
-                              Email: info@dombraсletov.ru
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                  </Tabs>
-                )}
-              </DialogContent>
+              <DialogTrigger asChild>
+                <div>
+                  <ProductCard
+                    product={product}
+                    index={index}
+                    onAddToCart={addToCart}
+                    onOpenDialog={setSelectedProduct}
+                  />
+                </div>
+              </DialogTrigger>
+              {selectedProduct && (
+                <ProductDialog
+                  product={selectedProduct}
+                  newReview={newReview}
+                  setNewReview={setNewReview}
+                  onAddToCart={addToCart}
+                  onSubmitReview={submitReview}
+                />
+              )}
             </Dialog>
           ))}
         </div>
